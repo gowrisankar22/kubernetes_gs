@@ -9,8 +9,11 @@ Add the Docker repository:
 sudo add-apt-repository    "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
    $(lsb_release -cs) \
    stable"
-Get the Kubernetes gpg key:
+```
 
+
+Get the Kubernetes gpg key:
+```
 curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
 Add the Kubernetes repository:
 
@@ -27,8 +30,11 @@ sudo apt-get update
 Install Docker, kubelet, kubeadm, and kubectl:
 
 sudo apt-get install -y docker-ce=18.06.1~ce~3-0~ubuntu kubelet=1.15.7-00 kubeadm=1.15.7-00 kubectl=1.15.7-00
+```
+
 Hold them at the current version:
 
+```
 sudo apt-mark hold docker-ce kubelet kubeadm kubectl
 Add the iptables rule to sysctl.conf:
 
