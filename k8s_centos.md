@@ -83,3 +83,18 @@ wboyd4c.mylabserver.com   Ready    master   3m36s   v1.12.2
 wboyd5c.mylabserver.com   Ready    <none>   23s     v1.12.2
 Make sure that all of your nodes are listed and that all have a STATUS of Ready.
 ```
+
+To deploy Dashboard, execute following command:
+
+```
+$ kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-rc5/aio/deploy/recommended.yaml
+```
+To access Dashboard from your local workstation you must create a secure channel to your Kubernetes cluster. Run the following command:
+
+```
+$ kubectl proxy
+Now access Dashboard at:
+
+http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/.
+
+```
