@@ -1,6 +1,6 @@
 ## Raw Kubernetes Install -- CentOS 
 
-We have set up a cluster in an Ubuntu environment, but it's a good idea to know how to install Kubernetes in a variety of envrionments. In this lesson, we will briefly go through how to bootstrap a cluster using CentOS 7 servers. After completing thia lesson, you will have some hands-on experience installing Kubernetes in an environment other than Ubuntu.
+We have set up a cluster in an Ubuntu environment, but it's a good idea to know how to install Kubernetes in a variety of envrionments. In this lesson, we will briefly go through how to bootstrap a cluster using CentOS 7 servers. After completing this, you will have some hands-on experience installing Kubernetes in an environment other than Ubuntu.
 
 Here are the commands used in this lesson. Feel free to use them as a reference, or just use them to follow along!
 
