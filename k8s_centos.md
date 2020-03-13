@@ -43,7 +43,7 @@ Change the line that says SELINUX=enforcing to SELINUX=permissive and save the f
 
 Install Kubernetes Components.
 
-
+```
 sudo yum install -y kubelet kubeadm kubectl
 sudo systemctl enable kubelet
 sudo systemctl start kubelet
