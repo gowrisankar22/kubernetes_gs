@@ -1,1 +1,1 @@
-# kubernetes_gs
+# Installing kubernetes on centos and ubuntu.
