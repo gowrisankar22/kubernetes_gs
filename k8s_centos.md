@@ -21,6 +21,8 @@ sudo systemctl start docker
 Add the Kubernetes repo.
 ```
 
+
+```
 cat << EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
