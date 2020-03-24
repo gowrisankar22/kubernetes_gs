@@ -10,6 +10,9 @@ RUN wget -nc -P /tmp/bitnami/pkg/cache/ https://downloads.bitnami.com/files/stac
 RUN apt-get update && apt-get upgrade -y && \
     rm -r /var/lib/apt/lists /var/cache/apt/archives
 
+# copy kubeconfig
+COPY config /opt/bitnami/kubectl/bin/config
+
 #copy monitoring script
 COPY monitor /opt/bitnami/kubectl/bin/monitor
 RUN chmod +x /opt/bitnami/kubectl/bin/monitor
