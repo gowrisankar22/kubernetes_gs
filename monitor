@@ -11,11 +11,11 @@ do
   echo "Node name: $line"
   result=$(kubectl top node "${line}")
   cpuper=$(echo $result | awk '{print $3}' | awk 'NR==2' | tr -d "%")
-  if [ "${cpuper}" -gt 70 ]; then
+  if [[ "${cpuper}" -gt 70 ]]; then
     echo "Trigger email"
   fi
   memper=$(echo $result | awk '{print $5}' | awk 'NR==2' | tr -d "%")
-  if [ "${memper}" -gt 70 ]p; then
+  if [[ "${memper}" -gt 70 ]]; then
     echo "Trigger email"
   fi
 done <<< "$nodes"
