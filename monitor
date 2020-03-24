@@ -9,11 +9,23 @@ MAIL_FROM=a
 SMTP_PASSWORD=a
 MAIL_BCC=a
 
+dir=$(pwd)
+
+cat << EOF > $dir/config
+
+<copy paste kubeconfig>
+
+EOF
+
+export KUBECONFIG=$dir/config
+
+echo "*********"
+kubectl get pods
+echo "*********"
 
 command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
 
 nodes=$(kubectl get nodes | awk '{print $1}' | awk 'NR==2')
-
 
 function sendemail() {
     mail_subject="Your text"
