@@ -9,15 +9,7 @@ MAIL_FROM=a
 SMTP_PASSWORD=a
 MAIL_BCC=a
 
-dir=$(pwd)
-
-cat << EOF > $dir/config
-
-<copy paste kubeconfig>
-
-EOF
-
-export KUBECONFIG=$dir/config
+export KUBECONFIG=/opt/bitnami/kubectl/bin/config
 
 echo "*********"
 kubectl get pods
