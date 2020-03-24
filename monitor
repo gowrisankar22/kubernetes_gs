@@ -1,3 +1,19 @@
 #!/bin/sh
 
-kubectl get nodes 
+command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
+
+nodes=`k get nodes | awk '{print $1}' | awk 'NR==2'
+
+while IFS= read -r line
+do
+  echo "Node name: $line"
+  result=`kubectl top node "${line}"`
+  cpuper=`echo $result | awk '{print $3}' | awk 'NR==2' | tr -d %`
+  if [ $cpuper -gt 70 ]; then
+    echo "Trigger email"
+  fi
+  memper=`echo $result | awk '{print $5}' | awk 'NR==2' | tr -d %`
+  if [ $memper -gt 70 ]; then
+    echo "Trigger email"
+  fi
+done <<< "$nodes"
