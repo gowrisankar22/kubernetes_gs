@@ -2,28 +2,31 @@
 
 set -e
 
-SMTPSRV=
+SMTPSRV=a
 SMTPPORT=a
 SMTP_USERNAME=a
 MAIL_FROM=a
 SMTP_PASSWORD=a
 MAIL_BCC=a
 
-function sendemail(){
+
+command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
+
+nodes=$(kubectl get nodes | awk '{print $1}' | awk 'NR==2')
+
+
+function sendemail() {
     mail_subject="Your text"
     mail_message_sign="
 Thank you,
 k8s"
     mail_body="Hello All,
-        Node is not healthy.
+        Node is not healthy."
     if ! retry echo -e "${mail_body}\n${mail_message_sign}" | s-nail -S smtp-use-starttls -S ssl-verify=ignore -S smtp-auth=login -S smtp="${SMTPSRV}:${SMTPPORT}" -S smtp-auth-user="${SMTP_USERNAME}" -S smtp-auth-password="${SMTP_PASSWORD}" -r "${MAIL_FROM}" -s "${mail_subject}" -b "${MAIL_BCC}" "${1}"; then
         echo "***Failed***"
     fi
 }
 
-command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
-
-nodes=$(kubectl get nodes | awk '{print $1}' | awk 'NR==2')
 
 while IFS= read -r line
 do
@@ -40,3 +43,6 @@ do
 done <<< "$nodes"
 
 echo "All done"
+
+
+
