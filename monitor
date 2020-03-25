@@ -8,7 +8,7 @@ SMTPPORT=
 MAIL_FROM=
 MAIL_BCC=
 
-SMTP_USERNAME="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.password' | base64 -d)"
+SMTP_USERNAME="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.username' | base64 -d)"
 SMTP_PASSWORD="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.password' | base64 -d)"
 
 command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
