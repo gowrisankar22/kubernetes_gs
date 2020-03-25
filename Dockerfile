@@ -26,10 +26,8 @@ RUN touch /etc/apt/sources.list.d/kubernetes.list
 RUN echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list
 RUN apt-get update
 RUN apt-get install -y kubectl
+RUN apt-get install -y jq
 
 COPY monitor /usr/local/bin/monitor
 RUN chmod a+x /usr/local/bin/monitor
 
-RUN mkdir -p ~/.kube
-COPY config ~/.kube/config
-RUN export KUBECONFIG=~/.kube/config

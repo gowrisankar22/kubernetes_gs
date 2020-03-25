@@ -1,19 +1,15 @@
 #!/bin/sh
 
 set -e
+set -x
 
 SMTPSRV=
 SMTPPORT=
-SMTP_USERNAME=
 MAIL_FROM=
-SMTP_PASSWORD=
 MAIL_BCC=
 
-export KUBECONFIG=~/.kube/config
-
-echo "*********"
-kubectl get pods
-echo "*********"
+SMTP_USERNAME="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.password' | base64 -d)"
+SMTP_PASSWORD="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.password' | base64 -d)"
 
 command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
 
@@ -31,18 +27,20 @@ k8s"
     fi
 }
 
-
 while IFS= read -r line
 do
   echo "Node name: $line"
   result=$(kubectl top node "${line}")
-  cpuper=$(echo $result | awk '{print $3}' | awk 'NR==2' | tr -d "%")
+  cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
+  echo $cpuper
   if [[ "${cpuper}" -gt 70 ]]; then
-   sendemail abc@gmail.com
+     echo "sending email"
+    #sendemail abc@gmail.com
   fi
-  memper=$(echo $result | awk '{print $5}' | awk 'NR==2' | tr -d "%")
+  memper=$(echo $result | awk '{print $10}' | tr -d "%")
   if [[ "${memper}" -gt 70 ]]; then
-    sendemail abc@gmail.com
+    #sendemail abc@gmail.com
+    echo "sending email"
   fi
 done <<< "$nodes"
 
