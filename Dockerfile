@@ -1,27 +1,30 @@
-FROM docker.io/bitnami/minideb:buster
-LABEL maintainer "Bitnami <containers@bitnami.com>"
+FROM ubuntu:18.04
 
-# Install required system packages and dependencies
-RUN install_packages ca-certificates curl procps sudo unzip wget
-RUN wget -nc -P /tmp/bitnami/pkg/cache/ https://downloads.bitnami.com/files/stacksmith/kubectl-1.15.3-0-linux-amd64-debian-10.tar.gz && \
-    echo "bee8b32d3312df3a548161c23b0bc0d2e2185b709c3eb849acfdbf9d64f914e1  /tmp/bitnami/pkg/cache/kubectl-1.15.3-0-linux-amd64-debian-10.tar.gz" | sha256sum -c - && \
-    tar -zxf /tmp/bitnami/pkg/cache/kubectl-1.15.3-0-linux-amd64-debian-10.tar.gz -P --transform 's|^[^/]*/files|/opt/bitnami|' --wildcards '*/files' && \
-    rm -rf /tmp/bitnami/pkg/cache/kubectl-1.15.3-0-linux-amd64-debian-10.tar.gz
-RUN apt-get update && apt-get upgrade -y && \
-    rm -r /var/lib/apt/lists /var/cache/apt/archives
+# Change default shell to sh
+RUN rm /bin/sh && ln -sf /bin/bash /bin/sh
 
-# copy kubeconfig
-COPY config /opt/bitnami/kubectl/bin/config
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y \
+    apt-utils \
+    apt-transport-https \
+    gnupg2 \
+    curl \
+    wget \
+    locales && \
+    rm -rf /var/lib/apt/lists/*
 
-#copy monitoring script
-COPY monitor /opt/bitnami/kubectl/bin/monitor
-RUN chmod +x /opt/bitnami/kubectl/bin/monitor
+# Set default language to US and UTF8 encoding
+RUN locale-gen "en_US.UTF-8"
 
-RUN chmod +x /opt/bitnami/kubectl/bin/kubectl
-ENV BITNAMI_APP_NAME="kubectl" \
-    BITNAMI_IMAGE_VERSION="1.15.3-debian-10-r55" \
-    PATH="/opt/bitnami/kubectl/bin:$PATH"
+ENV LANG "en_US.UTF-8"
+ENV LANGUAGE "en_US.UTF-8"
+ENV LC_ALL "en_US.UTF-8"
 
-USER 1001
-ENTRYPOINT [ "kubectl" ]
-CMD [ "--help" ]
+# Install apt packages
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
+    kubectl=1.16.3-00
+
+RUN cp monitor /usr/local/bin/monitor && \
+chmod a+x /usr/local/bin/monitor

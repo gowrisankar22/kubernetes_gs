@@ -2,17 +2,20 @@
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
-  name: hello
+  name: monitor
+  namespace: kube-system
 spec:
   schedule: "*/5 * * * *"
   jobTemplate:
     spec:
       template:
         spec:
-          serviceAccountName: default
+          serviceAccountName: jmutai-admin
           containers:
           - name: monitor
-            image: bitnami/kubectl:latest
-            command: [ "/bin/sh" ]
-            args: [ "/opt/bitnami/kubectl/bin/monitor" ]
+            image: gowrisankar22/kubebox:latest
+            command:
+            - /bin/bash
+            - -c
+            - monitor
           restartPolicy: OnFailure
