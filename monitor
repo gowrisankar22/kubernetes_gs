@@ -2,14 +2,14 @@
 
 set -e
 
-SMTPSRV=a
-SMTPPORT=a
-SMTP_USERNAME=a
-MAIL_FROM=a
-SMTP_PASSWORD=a
-MAIL_BCC=a
+SMTPSRV=
+SMTPPORT=
+SMTP_USERNAME=
+MAIL_FROM=
+SMTP_PASSWORD=
+MAIL_BCC=
 
-export KUBECONFIG=/opt/bitnami/kubectl/bin/config
+export KUBECONFIG=~/.kube/config
 
 echo "*********"
 kubectl get pods

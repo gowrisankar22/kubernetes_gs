@@ -21,10 +21,15 @@ ENV LANG "en_US.UTF-8"
 ENV LANGUAGE "en_US.UTF-8"
 ENV LC_ALL "en_US.UTF-8"
 
-# Install apt packages
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive \
-    kubectl=1.16.3-00
+RUN curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+RUN touch /etc/apt/sources.list.d/kubernetes.list 
+RUN echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | tee -a /etc/apt/sources.list.d/kubernetes.list
+RUN apt-get update
+RUN apt-get install -y kubectl
 
-RUN cp monitor /usr/local/bin/monitor && \
-chmod a+x /usr/local/bin/monitor
+COPY monitor /usr/local/bin/monitor
+RUN chmod a+x /usr/local/bin/monitor
+
+RUN mkdir -p ~/.kube
+COPY config ~/.kube/config
+RUN export KUBECONFIG=~/.kube/config
