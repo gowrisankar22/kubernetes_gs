@@ -53,8 +53,12 @@ do
 done <<< "$nodestatus"
 
 if test -e /tmp/cpunode || test -e /tmp/nodemem; then
-   cpu="$(cat  /tmp/cpunode)"
-   mem="$(cat  /tmp/nodemem)"
+   if test -e /tmp/cpunode; then
+      cpu="$(cat  /tmp/cpunode)"
+   fi
+   if test -e /tmp/memnode; then
+      mem="$(cat  /tmp/nodemem)"
+   fi
    echo "sending email"
    sendemail "${SMTP_USERNAME}" "${mem}" "${cpu}"
 fi
