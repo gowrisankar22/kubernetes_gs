@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-
+set -x
 SMTPPORT=25
 SMTP_USERNAME="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.username' | base64 -d)"
 SMTP_PASSWORD="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.password' | base64 -d)"
@@ -20,9 +20,10 @@ function sendemail() {
 Thank you,
 k8s-mwe-zebra"
     mail_body="Hello All,
-        Node is not healthy.
+        Node is not healthy. Please have look into it by running kubectl get nodes.
         $2
-        $3"
+        $3
+        $4"
     if ! echo -e "${mail_body}\n${mail_message_sign}" | s-nail -S  ssl-verify=ignore -S  smtp="${SMTPSRV}:${SMTPPORT}" -S smtp-auth-user="${SMTP_USERNAME}" -S smtp-auth-password="${SMTP_PASSWORD}" -r "${MAIL_FROM}" -s "${mail_subject}" -b "${MAIL_BCC}" "${1}"; then
         echo "***Failed***"
     fi
@@ -36,32 +37,37 @@ do
          echo "Node name: $line"
          result=$(kubectl top node "${line}")
          cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
-         if [[ "${cpuper}" -gt 70 ]]; then
-            rm /tmp/nodecpu
+         if [[ "${cpuper}" -gt 80 ]]; then
+            rm -rf /tmp/nodecpu
             echo "nodename=$line; cpuutilized=${cpuper}%" >> /tmp/nodecpu
          fi
          memper=$(echo $result | awk '{print $10}' | tr -d "%")
-         if [[ "${memper}" -gt 70 ]]; then
-            rm /tmp/nodemem
+         if [[ "${memper}" -gt 80 ]]; then
+            rm -rf /tmp/nodemem
             echo "nodename=$line; memutilized=${memper}%" >> /tmp/nodemem
          fi
       else
-          rm /tmp/nodestatus
+          rm -rf /tmp/nodestatus
           echo "nodename=$line; status=$status" >> /tmp/nodestatus
-          nodestatus="$(cat /tmp/nodestatus)"
-          sendemail "${SMTP_USERNAME}" "${nodestatus}"
     fi
 
    done <<< "$nodes"
 done <<< "$nodestatus"
 
-if test -e /tmp/nodecpu || test -e /tmp/nodemem; then
+if test -e /tmp/nodecpu || test -e /tmp/nodemem || test -e /tmp/nodestatus; then
    if test -e /tmp/nodecpu; then
       cpu="$(cat  /tmp/nodecpu)"
    fi
    if test -e /tmp/memnode; then
       mem="$(cat  /tmp/nodemem)"
    fi
+   if test -e /tmp/nodestatus; then
+      nodestatus="$(cat /tmp/nodestatus)"
+   fi
    echo "sending email"
-   sendemail "${SMTP_USERNAME}" "${mem}" "${cpu}"
+   echo "${mem} ${cpu}" "${nodestatus}"
+   sendemail "${SMTP_USERNAME}" "${mem}" "${cpu}" "${nodestatus}"
+else
+   echo "Node is healthy"
 fi
+
