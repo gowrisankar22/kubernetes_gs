@@ -3,48 +3,62 @@
 set -e
 set -x
 
-SMTPSRV=
-SMTPPORT=
-MAIL_FROM=
-MAIL_BCC=
-
+SMTPPORT=25
 SMTP_USERNAME="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.username' | base64 -d)"
 SMTP_PASSWORD="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.password' | base64 -d)"
+SMTPSRV="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.smtpserver' | base64 -d)"
+MAIL_FROM="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.mailfrom' | base64 -d)"
+MAIL_BCC="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.mailbcc' | base64 -d)"
 
 command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
 
-nodes=$(kubectl get nodes | awk '{print $1}' | awk 'NR==2')
+nodestatus=$(kubectl get nodes | awk '{print $2}' | tail -n +2)
+nodes=$(kubectl get nodes | awk '{print $1}' | tail -n +2)
 
 function sendemail() {
-    mail_subject="Your text"
+    mail_subject="Alerts:node unhealthy"
     mail_message_sign="
 Thank you,
-k8s"
+k8s-mwe-zebra"
     mail_body="Hello All,
-        Node is not healthy."
-    if ! retry echo -e "${mail_body}\n${mail_message_sign}" | s-nail -S smtp-use-starttls -S ssl-verify=ignore -S smtp-auth=login -S smtp="${SMTPSRV}:${SMTPPORT}" -S smtp-auth-user="${SMTP_USERNAME}" -S smtp-auth-password="${SMTP_PASSWORD}" -r "${MAIL_FROM}" -s "${mail_subject}" -b "${MAIL_BCC}" "${1}"; then
+        Node is not healthy.
+        $2"
+    if ! echo -e "${mail_body}\n${mail_message_sign}" | s-nail -S  ssl-verify=ignore -S  smtp="${SMTPSRV}:${SMTPPORT}" -S smtp-auth-user="${SMTP_USERNAME}" -S smtp-auth-password="${SMTP_PASSWORD}" -r "${MAIL_FROM}" -s "${mail_subject}" -b "${MAIL_BCC}" "${1}"; then
         echo "***Failed***"
     fi
 }
 
-while IFS= read -r line
+while IFS= read -r status
 do
-  echo "Node name: $line"
-  result=$(kubectl top node "${line}")
-  cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
-  echo $cpuper
-  if [[ "${cpuper}" -gt 70 ]]; then
-     echo "sending email"
-    #sendemail abc@gmail.com
-  fi
-  memper=$(echo $result | awk '{print $10}' | tr -d "%")
-  if [[ "${memper}" -gt 70 ]]; then
-    #sendemail abc@gmail.com
-    echo "sending email"
-  fi
-done <<< "$nodes"
 
+  while IFS= read -r line
+  do
+    if [ "${status}" == "Ready" ]; then
+      echo "Node name: $line"
+      result=$(kubectl top node "${line}")
+      cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
+      echo $cpuper
+      if [[ "${cpuper}" -gt 70 ]]; then
+         echo "sending email"
+         echo "nodename=$line; cpuutilized=${cpuper}%" >> /tmp/cpunode
+         cpu="$(cat  /tmp/cpunode)"
+         sendemail "${SMTP_USERNAME}" "${cpu}"
+      fi
+      memper=$(echo $result | awk '{print $10}' | tr -d "%")
+      if [[ "${memper}" -gt 70 ]]; then
+        echo "nodename=$line; memutilized=${memper}%" >> /tmp/nodemem
+        mem="$(cat  /tmp/nodemem)"
+        echo "sending email"
+        sendemail "${SMTP_USERNAME}" "${mem}"
+      fi
+    else
+      echo "nodename=$line; status=$status" >> /tmp/nodestatus
+      nodestatus="$(cat /tmp/nodestatus)"
+      sendemail "${SMTP_USERNAME}" "${nodestatus}"
+    fi
+
+  done <<< "$nodes"
+done <<< "$nodestatus"
 echo "All done"
-
 
 
