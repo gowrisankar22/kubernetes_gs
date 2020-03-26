@@ -37,13 +37,16 @@ do
          result=$(kubectl top node "${line}")
          cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
          if [[ "${cpuper}" -gt 70 ]]; then
-            echo "nodename=$line; cpuutilized=${cpuper}%" >> /tmp/cpunode
+            rm /tmp/nodecpu
+            echo "nodename=$line; cpuutilized=${cpuper}%" >> /tmp/nodecpu
          fi
          memper=$(echo $result | awk '{print $10}' | tr -d "%")
          if [[ "${memper}" -gt 70 ]]; then
+            rm /tmp/nodemem
             echo "nodename=$line; memutilized=${memper}%" >> /tmp/nodemem
          fi
       else
+          rm /tmp/nodestatus
           echo "nodename=$line; status=$status" >> /tmp/nodestatus
           nodestatus="$(cat /tmp/nodestatus)"
           sendemail "${SMTP_USERNAME}" "${nodestatus}"
@@ -52,9 +55,9 @@ do
    done <<< "$nodes"
 done <<< "$nodestatus"
 
-if test -e /tmp/cpunode || test -e /tmp/nodemem; then
-   if test -e /tmp/cpunode; then
-      cpu="$(cat  /tmp/cpunode)"
+if test -e /tmp/nodecpu || test -e /tmp/nodemem; then
+   if test -e /tmp/nodecpu; then
+      cpu="$(cat  /tmp/nodecpu)"
    fi
    if test -e /tmp/memnode; then
       mem="$(cat  /tmp/nodemem)"
