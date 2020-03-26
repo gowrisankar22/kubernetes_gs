@@ -1,6 +1,5 @@
 #!/bin/sh
 set -e
-set -x
 SMTPPORT=25
 SMTP_USERNAME="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.username' | base64 -d)"
 SMTP_PASSWORD="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.password' | base64 -d)"
