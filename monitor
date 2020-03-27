@@ -26,31 +26,40 @@ k8s-mwe-zebra"
         echo "***Failed***"
     fi
 }
-rm -rf /tmp/nodecpu
-rm -rf /tmp/nodestatus
-rm -rf /tmp/nodemem
+nodes="$(kubectl get nodes | awk '{print $1}' | tail -n +2 | tr -s '\n'  ' ')"
+nodestatus="$(kubectl get nodes | awk '{print $2}' | tail -n +2 | tr -s '\n'  ' ')"
 
-function scanningnode() {
-    set "${nodestatus}"
+rm -rf /tmp/nodecpu
+rm -rf /tmp/nodemem
+rm -rf /tmp/nodestatus
+
+fun() {
+    set $nodestatus
     for i in $nodes; do
-        echo command "$i" "$1"
-        if [ "{$1}" == "Ready" ]; then
-            result=$(kubectl top node "${i}")
-            cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
-            if [[ "${cpuper}" -gt 80 ]]; then
-                echo "nodename=${i}; cpuutilized=${cpuper}%" >> /tmp/nodecpu
-            fi
-            memper=$(echo $result | awk '{print $10}' | tr -d "%")
-            if [[ "${memper}" -gt 80 ]]; then
-               echo "nodename=${i}; memutilized=${memper}%" >> /tmp/nodemem
-            fi
+        #echo command "$i" "$1"
+        nodename=$i
+        nodestatus=$1
+        #echo "$var1:$var2"
+        if [ $nodestatus == "Ready" ]; then
+           result=$(kubectl top node "${nodename}")
+           cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
+           echo $cpuper
+           if [[ "${cpuper}" -gt 80 ]]; then
+                echo "nodename: $nodename; cpuutilized=${cpuper}%" >> /tmp/nodecpu
+           fi
+           memper=$(echo $result | awk '{print $10}' | tr -d "%")
+           echo $memper
+           if [[ "${memper}" -gt 80 ]]; then
+               echo "nodename : $nodename; memutilized=${memper}%" >> /tmp/nodemem
+           fi
         else
-            echo "nodename=${i}; status=${1}" >> /tmp/nodestatus
+          echo "nodename : $nodename; status=${1}" >> /tmp/nodestatus
         fi
         shift
     done
 }
-scanningnode
+
+fun
 
 if test -e /tmp/nodecpu; then
    cpu="$(cat  /tmp/nodecpu)"
