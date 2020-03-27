@@ -11,8 +11,8 @@ MAIL_BCC="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.mailb
 echo "Check kubectl command exists"
 command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
 
-nodes=$(kubectl get nodes | awk '{print $1}' | tail -n +2)
-nodestatus=$(kubectl get nodes | awk '{print $2}' | tail -n +2)
+nodes="$(kubectl get nodes | awk '{print $1}' | tail -n +2 | tr -s '\n'  ' ')"
+nodestatus="$(kubectl get nodes | awk '{print $2}' | tail -n +2 | tr -s '\n'  ' ')"
 
 function sendemail() {
     mail_subject="$3"
@@ -29,6 +29,16 @@ k8s-mwe-zebra"
 rm -rf /tmp/nodecpu
 rm -rf /tmp/nodestatus
 rm -rf /tmp/nodemem
+
+function scanningnode() {
+    set $nodestatus
+    for i in $nodes; do
+        echo command "$i" "$1"
+        shift
+    done
+}
+
+fun
 
 while IFS= read -r status
 do
