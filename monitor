@@ -1,5 +1,6 @@
 #!/bin/sh
 set -e
+
 SMTPPORT=25
 SMTP_USERNAME="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.username' | base64 -d)"
 SMTP_PASSWORD="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.password' | base64 -d)"
@@ -28,6 +29,7 @@ k8s-mwe-zebra"
 rm -rf /tmp/nodecpu
 rm -rf /tmp/nodestatus
 rm -rf /tmp/nodemem
+
 while IFS= read -r status
 do
    echo "Node status: $status"
@@ -56,15 +58,19 @@ if test -e /tmp/nodecpu; then
    mailsubject="Alert:Memory is high"
    sendemail "${SMTP_USERNAME}" "${cpu}" "${mailsubject}"    
 fi
+
 if test -e /tmp/memnode; then
    mem="$(cat  /tmp/nodemem)"
    echo "sending email"
     mailsubject="Alert:CPU is high"
    sendemail "${SMTP_USERNAME}" "${mem}" "${mailsubject}"
 fi
+
 if test -e /tmp/nodestatus; then
    nodestatus="$(cat /tmp/nodestatus)"
    echo "sending email"
    mailsubject="Alert:Node is down"
    sendemail "${SMTP_USERNAME}" "${nodestatus}" "${mailsubject}" 
 fi
+
+echo "Scanning is completed!!!"
