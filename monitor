@@ -31,36 +31,26 @@ rm -rf /tmp/nodestatus
 rm -rf /tmp/nodemem
 
 function scanningnode() {
-    set $nodestatus
+    set "${nodestatus}"
     for i in $nodes; do
         echo command "$i" "$1"
+        if [ "{$1}" == "Ready" ]; then
+            result=$(kubectl top node "${i}")
+            cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
+            if [[ "${cpuper}" -gt 80 ]]; then
+                echo "nodename=${i}; cpuutilized=${cpuper}%" >> /tmp/nodecpu
+            fi
+            memper=$(echo $result | awk '{print $10}' | tr -d "%")
+            if [[ "${memper}" -gt 80 ]]; then
+               echo "nodename=${i}; memutilized=${memper}%" >> /tmp/nodemem
+            fi
+        else
+            echo "nodename=${i}; status=${1}" >> /tmp/nodestatus
+        fi
         shift
     done
 }
-
-fun
-
-while IFS= read -r status
-do
-   echo "Node status: $status"
-   while IFS= read -r line
-   do
-      if [ "${status}" == "Ready" ]; then
-         echo "Node name: $line"
-         result=$(kubectl top node "${line}")
-         cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
-         if [[ "${cpuper}" -gt 80 ]]; then
-            echo "nodename=$line; cpuutilized=${cpuper}%" >> /tmp/nodecpu
-         fi
-         memper=$(echo $result | awk '{print $10}' | tr -d "%")
-         if [[ "${memper}" -gt 80 ]]; then
-            echo "nodename=$line; memutilized=${memper}%" >> /tmp/nodemem
-         fi
-      else
-          echo "nodename=$line; status=$status" >> /tmp/nodestatus
-    fi
-   done <<< "$nodes"
-done <<< "$nodestatus"
+scanningnode
 
 if test -e /tmp/nodecpu; then
    cpu="$(cat  /tmp/nodecpu)"
