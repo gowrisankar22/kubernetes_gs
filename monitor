@@ -11,7 +11,8 @@ echo "Check kubectl command exists"
 command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
 
 nodes=$(kubectl get nodes | awk '{print $1}' | tail -n +2)
-nodestatus=$(kubectl get nodes | awk '{print $2}' | tail -n +2)
+#nodestatus=$(kubectl get nodes | awk '{print $2}' | tail -n +2)
+kubectl get nodes | awk '{print $2}' | tail -n +2 > /tmp/nodest
 
 function sendemail() {
     mail_subject="Alerts:node unhealthy"
@@ -50,7 +51,7 @@ do
     fi
 
    done <<< "$nodes"
-done <<< "$nodestatus"
+done < /tmp/nodest
 
 if test -e /tmp/nodecpu || test -e /tmp/nodemem || test -e /tmp/nodestatus; then
    if test -e /tmp/nodecpu; then
