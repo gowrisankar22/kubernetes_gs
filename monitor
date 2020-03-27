@@ -10,21 +10,17 @@ MAIL_BCC="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.mailb
 echo "Check kubectl command exists"
 command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
 
-#nodes=$(kubectl get nodes | awk '{print $1}' | tail -n +2)
-#nodestatus=$(kubectl get nodes | awk '{print $2}' | tail -n +2)
-kubectl get nodes | awk '{print $1}' | tail -n +2 > /tmp/file1
-kubectl get nodes | awk '{print $2}' | tail -n +2 > /tmp/file2
+nodes=$(kubectl get nodes | awk '{print $1}' | tail -n +2)
+nodestatus=$(kubectl get nodes | awk '{print $2}' | tail -n +2)
 
 function sendemail() {
-    mail_subject="Alerts:node unhealthy"
+    mail_subject="$3"
     mail_message_sign="
 Thank you,
 k8s-mwe-zebra"
     mail_body="Hello All,
         Node is not healthy. Please have look into it by running kubectl get nodes.
-        $2
-        $3
-        $4"
+        $2"
     if ! echo -e "${mail_body}\n${mail_message_sign}" | s-nail -S  ssl-verify=ignore -S  smtp="${SMTPSRV}:${SMTPPORT}" -S smtp-auth-user="${SMTP_USERNAME}" -S smtp-auth-password="${SMTP_PASSWORD}" -r "${MAIL_FROM}" -s "${mail_subject}" -b "${MAIL_BCC}" "${1}"; then
         echo "***Failed***"
     fi
@@ -32,13 +28,12 @@ k8s-mwe-zebra"
 rm -rf /tmp/nodecpu
 rm -rf /tmp/nodestatus
 rm -rf /tmp/nodemem
-
-var1=$(cat /tmp/file1)
-var2=$(cat /tmp/file2)
-for status in ${var1} ; do
-   echo $status
-  for line in ${var2} ; do
-    if [ "${status}" == "Ready" ]; then
+while IFS= read -r status
+do
+   echo "Node status: $status"
+   while IFS= read -r line
+   do
+      if [ "${status}" == "Ready" ]; then
          echo "Node name: $line"
          result=$(kubectl top node "${line}")
          cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
@@ -52,25 +47,24 @@ for status in ${var1} ; do
       else
           echo "nodename=$line; status=$status" >> /tmp/nodestatus
     fi
-    
-  done
-done
+   done <<< "$nodes"
+done <<< "$nodestatus"
 
-
-if test -e /tmp/nodecpu || test -e /tmp/nodemem || test -e /tmp/nodestatus; then
-   if test -e /tmp/nodecpu; then
-      cpu="$(cat  /tmp/nodecpu)"
-   fi
-   if test -e /tmp/memnode; then
-      mem="$(cat  /tmp/nodemem)"
-   fi
-   if test -e /tmp/nodestatus; then
-      nodestatus="$(cat /tmp/nodestatus)"
-   fi
+if test -e /tmp/nodecpu; then
+   cpu="$(cat  /tmp/nodecpu)"
    echo "sending email"
-   echo "${mem} ${cpu}" "${nodestatus}"
-   sendemail "${SMTP_USERNAME}" "${mem}" "${cpu}" "${nodestatus}"
-else
-   echo "Node is healthy"
+   mailsubject="Alert:Memory is high"
+   sendemail "${SMTP_USERNAME}" "${cpu}" "${mailsubject}"    
 fi
-
+if test -e /tmp/memnode; then
+   mem="$(cat  /tmp/nodemem)"
+   echo "sending email"
+    mailsubject="Alert:CPU is high"
+   sendemail "${SMTP_USERNAME}" "${mem}" "${mailsubject}"
+fi
+if test -e /tmp/nodestatus; then
+   nodestatus="$(cat /tmp/nodestatus)"
+   echo "sending email"
+   mailsubject="Alert:Node is down"
+   sendemail "${SMTP_USERNAME}" "${nodestatus}" "${mailsubject}" 
+fi
