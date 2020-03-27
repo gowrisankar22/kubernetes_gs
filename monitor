@@ -10,9 +10,10 @@ MAIL_BCC="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.mailb
 echo "Check kubectl command exists"
 command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
 
-nodes=$(kubectl get nodes | awk '{print $1}' | tail -n +2)
+#nodes=$(kubectl get nodes | awk '{print $1}' | tail -n +2)
 #nodestatus=$(kubectl get nodes | awk '{print $2}' | tail -n +2)
-kubectl get nodes | awk '{print $2}' | tail -n +2 > /tmp/nodest
+kubectl get nodes | awk '{print $1}' | tail -n +2 > /tmp/file1
+kubectl get nodes | awk '{print $2}' | tail -n +2 > /tmp/file2
 
 function sendemail() {
     mail_subject="Alerts:node unhealthy"
@@ -31,11 +32,13 @@ k8s-mwe-zebra"
 rm -rf /tmp/nodecpu
 rm -rf /tmp/nodestatus
 rm -rf /tmp/nodemem
-while IFS= read -r status
-do
-   while IFS= read -r line
-   do
-      if [ "${status}" == "Ready" ]; then
+
+var1=$(cat /tmp/file1)
+var2=$(cat /tmp/file2)
+for status in ${var1} ; do
+   echo $status
+  for  in ${var2} ; do
+    if [ "${status}" == "Ready" ]; then
          echo "Node name: $line"
          result=$(kubectl top node "${line}")
          cpuper="$(echo $result | awk '{print $8}' | tr -d "%")"
@@ -49,9 +52,10 @@ do
       else
           echo "nodename=$line; status=$status" >> /tmp/nodestatus
     fi
+    
+  done
+done
 
-   done <<< "$nodes"
-done < /tmp/nodest
 
 if test -e /tmp/nodecpu || test -e /tmp/nodemem || test -e /tmp/nodestatus; then
    if test -e /tmp/nodecpu; then
