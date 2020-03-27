@@ -8,11 +8,12 @@ SMTPSRV="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.smtpse
 MAIL_FROM="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.mailfrom' | base64 -d)"
 MAIL_BCC="$(kubectl get secrets/mail -n kube-system -o json | jq -r '.data.mailbcc' | base64 -d)"
 
+rm -rf /tmp/nodecpu
+rm -rf /tmp/nodemem
+rm -rf /tmp/nodestatus
+
 echo "Check kubectl command exists"
 command -v kubectl >/dev/null 2>&1 || { echo >&2 "I require kubectl but it's not installed.  Aborting."; exit 1; }
-
-nodes="$(kubectl get nodes | awk '{print $1}' | tail -n +2 | tr -s '\n'  ' ')"
-nodestatus="$(kubectl get nodes | awk '{print $2}' | tail -n +2 | tr -s '\n'  ' ')"
 
 function sendemail() {
     mail_subject="$3"
@@ -26,12 +27,9 @@ k8s-mwe-zebra"
         echo "***Failed***"
     fi
 }
+
 nodes="$(kubectl get nodes | awk '{print $1}' | tail -n +2 | tr -s '\n'  ' ')"
 nodestatus="$(kubectl get nodes | awk '{print $2}' | tail -n +2 | tr -s '\n'  ' ')"
-
-rm -rf /tmp/nodecpu
-rm -rf /tmp/nodemem
-rm -rf /tmp/nodestatus
 
 fun() {
     set $nodestatus
@@ -53,7 +51,7 @@ fun() {
                echo "nodename : $nodename; memutilized=${memper}%" >> /tmp/nodemem
            fi
         else
-          echo "nodename : $nodename; status=${1}" >> /tmp/nodestatus
+          echo "nodename : $nodename; status: $nodestatus" >> /tmp/nodestatus
         fi
         shift
     done
