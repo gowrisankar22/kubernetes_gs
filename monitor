@@ -37,7 +37,7 @@ var1=$(cat /tmp/file1)
 var2=$(cat /tmp/file2)
 for status in ${var1} ; do
    echo $status
-  for  in ${var2} ; do
+  for line in ${var2} ; do
     if [ "${status}" == "Ready" ]; then
          echo "Node name: $line"
          result=$(kubectl top node "${line}")
