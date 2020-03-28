@@ -1,55 +1,181 @@
 #!/bin/bash
-# Add user to k8s 1.5 using service account, no RBAC (unsafe)
+set -e
+set -o pipefail
+set -x
 
-if [[ -z "$1" ]] ;then
-  echo "usage: $0 <username>"
-  exit 1
+# Learned from https://www.openlogic.com/blog/granting-user-access-your-kubernetes-cluster
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+    echo "usage: $0 <username> <namespace> <orgname>"
+    exit 1
+else
+    echo "Assiging the global variables"
+    username="$1"
+    namespace="$2"
+    org="$3"
+    dir="/tmp/$1"
+    rootpath="$(pwd)"
 fi
 
-user=$1
-kubectl create sa ${user}
-secret=$(kubectl get sa ${user} -o json | jq -r .secrets[].name)
-echo "secret = ${secret}"
+if [ ! -d "${dir}" ]; then
+    echo "Directory for User: $username not exist,hence creating"
+    mkdir /tmp/"$1"
+    echo "Directory for User: $username is created successfully"
+fi
 
-kubectl get secret ${secret} -o json | jq -r '.data["ca.crt"]' | base64 -D > ca.crt
-user_token=$(kubectl get secret ${secret} -o json | jq -r '.data["token"]' | base64 -D)
-echo "token = ${user_token}"
+if ! kubectl get ns | grep "${namespace}" > /dev/null 2>&1; then
+    if kubectl create ns "${namespace}"; then echo "Creation of the monitoring namespace is successfull"; fi
+fi
 
-c=`kubectl config current-context`
-echo "context = $c"
+function retry() {
+    local n=1
+    local max=10
+    local delay=30
+    while true; do
+        # shellcheck disable=SC2015
+        "$@" && break || {
+        if [[ $n -lt $max ]]; then
+            ((n++))
+            echo "Command failed. Attempt $n/$max: retry in $delay sec"
+            sleep $delay;
+        else
+            fail "The command has failed after $n attempts."
+        fi
+       }
+    done
+}
 
-cluster_name=`kubectl config get-contexts $c | awk '{print $3}' | tail -n 1`
-echo "cluster_name= ${cluster_name}"
+function prerequisites() {
+    if ! command -v  openssl >/dev/null 2>&1; then
+        echo "ERROR: cf CLI not found. Exiting."
+        exit 1
+    fi
+    if ! command -v  kubectl >/dev/null 2>&1; then
+        echo "ERROR: cf CLI not found. Exiting."
+        exit 1
+    fi
+}
 
-endpoint=`kubectl config view -o jsonpath="{.clusters[?(@.name == \"${cluster_name}\")].cluster.server}"`
-echo "endpoint = ${endpoint}"
+function create_sa_with_role_rolebinding(){
+    pushd "${dir}" > /dev/null
+        cp "${rootpath}"/manifests/k8s-sa.yaml $username-k8s-sa.yaml
+        sed -i "s/replace1/${username}-k8s-sa/g" "${dir}"/$username-k8s-sa.yaml
+        sed -i "s/replace2/${namespace}/g" "${dir}"/$username-k8s-sa.yaml
+        if ! kubectl apply -f "${dir}"/"${username}"-k8s-sa.yaml ; then 
+            echo "Service account creation failed for user: $username. Exiting."
+            exit 1
+        fi
+        cp "${rootpath}"/manifests/k8s-role.yaml $username-k8s-role.yaml
+        sed -i "s/replace1/${username}-k8s-role/g" "${dir}"/$username-k8s-role.yaml
+        sed -i "s/replace2/${namespace}/g" "${dir}"/$username-k8s-role.yaml
+        if ! kubectl apply -f "${dir}"/"${username}"-k8s-role.yaml ; then 
+            echo "Role creation failed for user: $username. Exiting."
+            exit 1
+        fi
+        cp "${rootpath}"/manifests/k8s-rolebinding.yaml $username-k8s-rolebinding.yaml
+        sed -i "s/replace1/${username}-k8s-rolebinding/g" "${dir}"/$username-k8s-rolebinding.yaml
+        sed -i "s/replace2/${namespace}/g" "${dir}"/$username-k8s-rolebinding.yaml
+        sed -i "s/replace3/${username}-k8s-role/g" "${dir}"/$username-k8s-rolebinding.yaml
+        sed -i "s/replace4/${username}-k8s-sa/g" "${dir}"/$username-k8s-rolebinding.yaml
+        sed -i "s/replace5/${username}/g" "${dir}"/$username-k8s-rolebinding.yaml
+        if ! kubectl apply -f "${dir}"/"${username}"-k8s-rolebinding.yaml ; then 
+            echo " Rolebinding creation failed for user: $username. Exiting."
+            exit 1
+        fi
+    popd  > /dev/null
+}
 
-# Set up the config
-KUBECONFIG=k8s-${user}-conf kubectl config set-cluster ${cluster_name} \
-    --embed-certs=true \
-    --server=${endpoint} \
-    --certificate-authority=./ca.crt
-echo ">>>>>>>>>>>>ca.crt"
-cat ca.crt
-echo "<<<<<<<<<<<<ca.crt"
-echo ">>>>>>>>>>>>${user}-setup.sh"
-echo kubectl config set-cluster ${cluster_name} \
-    --embed-certs=true \
-    --server=${endpoint} \
-    --certificate-authority=./ca.crt
-echo kubectl config set-credentials ${user}-${cluster_name#cluster-} --token=${user_token}
-echo kubectl config set-context ${user}-${cluster_name#cluster-} \
-    --cluster=${cluster_name} \
-    --user=${user}-${cluster_name#cluster-}
-echo kubectl config use-context ${user}-${cluster_name#cluster-}
-echo "<<<<<<<<<<<<${user}-setup.sh"
+function createcsr() {
+    echo "Generating CSR request for the user: $username"
+    pushd "${dir}" > /dev/null
+    openssl req -new -newkey rsa:4096 -nodes -keyout $username-k8s.key -out $username-k8s.csr -subj "/CN=${username}/O=$org"
+    popd  > /dev/null
+}
 
-echo "...preparing k8s-${user}-conf"
-KUBECONFIG=k8s-${user}-conf kubectl config set-credentials ${user}-${cluster_name#cluster-} --token=${user_token}
-KUBECONFIG=k8s-${user}-conf kubectl config set-context ${user}-${cluster_name#cluster-} \
-    --cluster=${cluster_name} \
-    --user=${user}-${cluster_name#cluster-}
-KUBECONFIG=k8s-${user}-conf kubectl config use-context ${user}-${cluster_name#cluster-}
 
-echo "done! Test with: "
-echo "KUBECONFIG=k8s-${user}-conf kubectl get no"
+function design_csr_k8s () {
+    pushd "${dir}" > /dev/null
+    cp "${rootpath}"/manifests/k8s-csr.yaml k8s-csr.yaml
+    csrencoded="$(cat ${username}-k8s.csr | base64 | tr -d '\n')"
+    sed -i "s/replace1/${username}-k8s-access/g" "${dir}"/k8s-csr.yaml
+    sed -i "s/replace2/${csrencoded}/g" "${dir}"/k8s-csr.yaml
+    echo "Creating CSR in k8s"
+    if ! retry kubectl apply -f "${dir}"/k8s-csr.yaml ; then
+        echo "ERROR: creating CSR request in k8s failed. Exiting."
+        exit 1
+    fi
+    echo "Creating CSR in k8s is done"
+    echo "Check and approve the CSR request in k8s"
+    csrstatus="$(kubectl get csr ${username}-k8s-access | awk '{print $4}' | tail -n +2)"
+    if [ $csrstatus == "Pending" ]; then
+        if ! kubectl certificate approve ${username}-k8s-access ; then
+            echo "ERROR: Approving CSR request in k8s failed. Exiting."
+            exit 1
+        fi
+    fi
+    echo "CSR is Approved and certificate Issued successfully"
+    echo "Retrieving the certificate"
+    if ! kubectl get csr ${username}-k8s-access -o jsonpath='{.status.certificate}' | base64 --decode > "${dir}"/${username}-k8s-access.crt ; then
+        echo "ERROR: Approving CSR request in k8s failed. Exiting."
+        exit 1
+    fi
+    echo "Retrieving the certificate is done"
+    popd  > /dev/null
+}
+
+function get_k8s_ca() {
+    echo "Getting kubernetes CA"
+    if ! kubectl config view -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' --raw | base64 --decode - > "${dir}"/k8s-ca.crt ; then
+         echo "ERROR: Getting k8s CA failed. Exiting."
+         exit 1
+    fi
+}
+
+function design_kubeconfig() {
+    pushd "${dir}" > /dev/null
+    echo "Setting up the Cluster Configuration"
+    if ! kubectl config set-cluster $(kubectl config view -o jsonpath='{.clusters[0].name}') --server=$(kubectl config view -o jsonpath='{.clusters[0].cluster.server}') --certificate-authority=k8s-ca.crt --kubeconfig=${username}-k8s-config --embed-certs ; then
+        echo "ERROR: Generating kubeconfig file for user: $username failed. Exiting."
+        exit 1
+    fi
+
+    if ! kubectl config set-credentials "${username}" --client-certificate=${username}-k8s-access.crt --client-key=${username}-k8s.key --embed-certs --kubeconfig=${username}-k8s-config; then
+        echo "ERROR: Generating kubeconfig file for user: $username failed. Exiting."
+        exit 1
+    fi
+    if ! kubectl config set-context "${username}" --cluster=$(kubectl config view -o jsonpath='{.clusters[0].name}') --namespace=${namespace} --user=${username} --kubeconfig=${username}-k8s-config ; then
+        echo "ERROR: Generating kubeconfig file for user: $username failed. Exiting."
+        exit 1
+    fi
+    echo "Setting up the Cluster Configuration done."
+    popd  > /dev/null
+}
+
+function test_kubeconfig() {
+    pushd "${dir}" > /dev/null
+    echo "*********Executing test*********"
+    if ! kubectl config use-context ${username} --kubeconfig=${username}-k8s-config; then
+        echo "Switching the context failed. Exiting"
+        exit 1
+    fi
+    if ! kubectl version --kubeconfig=${username}-k8s-config; then
+        echo "Unable to reach k8s and test failed. Exiting"
+        exit 1
+    fi
+    if ! kubectl get pods --kubeconfig=${username}-k8s-config; then
+        echo "Unable to get k8s resources. Exiting"
+        exit 1
+    fi
+    echo "*********Test excuted successfully*********"
+    popd  > /dev/null
+}
+
+function main (){
+   prerequisites
+   create_sa_with_role_rolebinding
+   createcsr
+   design_csr_k8s
+   get_k8s_ca
+   design_kubeconfig
+   test_kubeconfig
+}
+main

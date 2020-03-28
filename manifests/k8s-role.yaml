@@ -1,0 +1,10 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: replace1
+  namespace: replace2 # Should be namespace you are granting access to
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]

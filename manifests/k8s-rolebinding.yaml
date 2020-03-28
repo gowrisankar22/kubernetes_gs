@@ -1,0 +1,17 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: replace1
+  namespace: replace2 # Should be namespace you are granting access to
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: replace3 # Should match name of Role
+subjects:
+- namespace: replace2 # Should match namespace where SA lives
+  kind: ServiceAccount
+  name: replace4 # Should match service account name, above
+- kind: User
+  name: replace5 # Name is case sensitive
+  apiGroup: rbac.authorization.k8s.io
