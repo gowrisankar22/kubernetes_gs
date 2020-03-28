@@ -146,8 +146,9 @@ function design_kubeconfig() {
         exit 1
     fi
     token="$(kubectl get secret $(kubectl get serviceaccount ${username}-k8s-sa -n ${namespace} -o jsonpath="{.secrets[0].name}") -n ${namespace} -o jsonpath="{.data.token}" | base64 --decode)"
-    echo "token: $token" >> "${dir}"/${username}-k8s-config
-    sed -i '$s/.*/   &/' "${dir}"/${username}-k8s-config
+    cp "${dir}"/${username}-k8s-config "${dir}"/${username}-dashboard-config
+    echo "token: $token" >> "${dir}"/${username}-dashboard-config
+    sed -i '$s/.*/   &/' "${dir}"/${username}-dashboard-config
     echo "Setting up the Cluster Configuration done."
     popd  > /dev/null
 }
