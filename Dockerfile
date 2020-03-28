@@ -10,6 +10,8 @@ RUN apt-get update && \
     apt-transport-https \
     gnupg2 \
     curl \
+    s-nail \
+    vim \
     wget \
     locales && \
     rm -rf /var/lib/apt/lists/*
