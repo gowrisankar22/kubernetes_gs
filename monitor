@@ -19,7 +19,7 @@ function sendemail() {
     mail_subject="$3"
     mail_message_sign="
 Thank you,
-k8s-mwe-zebra"
+k8s"
     mail_body="Hello All,
         Node is not healthy. Please have look into it by running kubectl get nodes.
         $2"
