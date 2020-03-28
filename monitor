@@ -62,14 +62,14 @@ fun
 if test -e /tmp/nodecpu; then
    cpu="$(cat  /tmp/nodecpu)"
    echo "sending email"
-   mailsubject="Alert:Memory is high"
+   mailsubject="Alert:CPU is high"
    sendemail "${SMTP_USERNAME}" "${cpu}" "${mailsubject}"    
 fi
 
 if test -e /tmp/nodemem; then
    mem="$(cat  /tmp/nodemem)"
    echo "sending email"
-    mailsubject="Alert:CPU is high"
+    mailsubject="Alert:Memory is high"
    sendemail "${SMTP_USERNAME}" "${mem}" "${mailsubject}"
 fi
 
