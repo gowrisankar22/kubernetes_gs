@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 set -o pipefail
-set -x
 
 # Learned from https://www.openlogic.com/blog/granting-user-access-your-kubernetes-cluster
 if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
