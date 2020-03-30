@@ -45,11 +45,11 @@ function retry() {
 
 function prerequisites() {
     if ! command -v  openssl >/dev/null 2>&1; then
-        echo "ERROR: cf CLI not found. Exiting."
+        echo "ERROR: openssl CLI not found. Exiting."
         exit 1
     fi
     if ! command -v  kubectl >/dev/null 2>&1; then
-        echo "ERROR: cf CLI not found. Exiting."
+        echo "ERROR: kubectl CLI not found. Exiting."
         exit 1
     fi
 }
