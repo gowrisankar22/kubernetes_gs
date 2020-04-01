@@ -25,6 +25,7 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
   grafana:
     image: grafana/grafana
+    user: "0"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_SECURITY_ADMIN_PASSWORD=MYPASSWORT
