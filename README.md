@@ -14,3 +14,8 @@ https://www.openlogic.com/blog/granting-user-access-your-kubernetes-cluster
 - run `./add_user <username> <namespace> <orgname>`
    
    example : `./add_user gowrisankar default devops`
+
+
+# setup monitoring with docker:
+
+https://www.devopsage.com/monitoring-servers-and-docker-containers-using-prometheus-and-grafana/
