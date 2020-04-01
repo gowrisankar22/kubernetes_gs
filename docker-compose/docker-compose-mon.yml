@@ -29,7 +29,7 @@ services:
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
-      - ./grafana_db:/var/lib/grafana
+      - ./grafana_db:/etc/grafana
     depends_on:
       - prometheus
     ports:
